@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    //*File structure
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    //*Modules
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2021",
+    "lib": ["ES2021", "DOM"],
+
+    //*Types
+    "types": [],
+    "jsx": "react-jsx",
+
+    //*Lint
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": false,
+
+    //*Strictness
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    //*Other
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force"
+  },
+  "include": ["src"]
+}

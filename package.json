@@ -1,0 +1,23 @@
+{
+  "name": "@ashetian/next-hls-lite",
+  "version": "1.0.0",
+  "description": "A tiny, Next.js-friendly React component that plays HLS streams with graceful fallbacks, mobile autoplay fixes, and zero layout jank.",
+  "homepage": "https://github.com/ashetian/next-hls-lite#readme",
+  "bugs": {
+    "url": "https://github.com/ashetian/next-hls-lite/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashetian/next-hls-lite.git"
+  },
+  "license": "MIT",
+  "author": "Caner Görez (ashetian)",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "test"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
