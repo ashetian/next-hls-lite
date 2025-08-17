@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, type ComponentPropsWithoutRef } from 'react';
+import type { ErrorData } from 'hls.js';
+import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react';
 
 type BaseVideoProps = Omit<ComponentPropsWithoutRef<'video'>, 'src'>;
 
@@ -32,6 +33,24 @@ export function HlsVideo({
 }: HlsVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
+  const [err, setErr] = useState<Error | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // tek noktadan emit
+  const emitError = (e: unknown) => {
+    const errObj = e instanceof Error ? e : new Error(String(e));
+    setErr(errObj);
+    onError?.(errObj);
+  };
+  const emitCanPlay = () => {
+    setIsLoaded(true);
+    onCanPlay?.();
+  };
+  const emitLoadStart = () => {
+    setIsLoaded(false);
+    setErr(null);
+    onLoadStart?.();
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -44,59 +63,77 @@ export function HlsVideo({
       hlsRef.current = null;
     };
 
-    const setupNative = () => {
-      onLoadStart?.();
-      video.src = src;
-      const canplay = () => { if (!destroyed) onCanPlay?.(); };
-      const error = () => { if (!destroyed) onError?.(new Error('Native video error')); };
-      video.addEventListener('canplay', canplay);
-      video.addEventListener('error', error);
-      video.load();
+    const bindNativeEvents = () => {
+      const handleCanPlay = () => { if (!destroyed) emitCanPlay(); };
+      const handleError = () => { if (!destroyed) emitError(new Error('Native video error')); };
+      video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('error', handleError);
       return () => {
-        video.removeEventListener('canplay', canplay);
-        video.removeEventListener('error', error);
+        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('error', handleError);
       };
     };
 
+    const setupNative = () => {
+      emitLoadStart();
+      video.src = src;
+      const unbind = bindNativeEvents();
+      video.load();
+      return unbind;
+    };
+
     const run = async () => {
-      const removeNative = supportsNativeHls(video) ? setupNative() : undefined;
-      if (removeNative) return () => { removeNative(); cleanup(); };
+      // önce her şeyi resetle
+      cleanup();
+      emitLoadStart();
+
+      if (supportsNativeHls(video)) {
+        return setupNative();
+      }
 
       try {
         const Hls = (await import('hls.js')).default;
         if (!Hls.isSupported()) {
-          onError?.(new Error('HLS.js not supported'));
-          return cleanup;
+          emitError(new Error('HLS.js not supported'));
+          return () => {};
         }
+
         const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
         hlsRef.current = hls;
+
+        const unbind = bindNativeEvents();
         hls.attachMedia(video);
         hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(src));
-        hls.on(Hls.Events.MANIFEST_PARSED, () => { if (!destroyed) onCanPlay?.(); });
-        hls.on(Hls.Events.ERROR, (_e: any, data: any) => {
-          if (!destroyed) {
-            if (data?.fatal) {
-              onError?.(new Error(`HLS fatal: ${data?.details ?? 'unknown'}`));
-              try { hls.destroy(); } catch {}
-              hlsRef.current = null;
-            } else {
-              onError?.(data);
-            }
+        hls.on(Hls.Events.ERROR, (_evt, data: ErrorData) => {
+          if (destroyed) return;
+          if (data?.fatal) {
+            emitError(new Error(`HLS fatal: ${data?.details ?? 'unknown'}`));
+            try { hls.destroy(); } catch {}
+            hlsRef.current = null;
+          } else {
+            onError?.(data);
           }
         });
-      } catch (err) {
-        onError?.(err);
+
+        return () => {
+          unbind();
+          try { hls.destroy(); } catch {}
+          hlsRef.current = null;
+        };
+      } catch (e) {
+        emitError(e);
+        return () => {};
       }
-      return cleanup;
     };
 
-    let disposer: (() => void) | undefined;
-    run().then((d) => { disposer = d; });
+    let dispose: (() => void) | undefined;
+    run().then((d) => { dispose = d; });
 
-    return () => { destroyed = true; disposer?.(); cleanup(); };
-  }, [src, onLoadStart, onCanPlay, onError]);
+    return () => { destroyed = true; dispose?.(); cleanup(); };
+  }, [src]); // callback’leri her render’da yeniden oluşturur
 
-  // Not: ebeveyn elementin bir boyutu olmalı (width/height); bu component o alanı %100 doldurur.
+  // ÖNEMLİ: Parent bir boyut vermeli (width/height veya aspect-ratio).
+  // Bu komponent o alanı %100 doldurur ve fit'e göre davranır.
   return (
     <div
       style={{
@@ -106,23 +143,67 @@ export function HlsVideo({
         overflow: 'hidden',
       }}
     >
+      {/* loader: yalnızca yüklenirken */}
+      {!isLoaded && !err && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.15)',
+            zIndex: 1,
+            pointerEvents: 'none',
+          }}
+          aria-hidden
+        >
+          <div
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.7)',
+              borderTopColor: 'transparent',
+              animation: 'spin 0.8s linear infinite',
+            }}
+          />
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      )}
+
+      {/* error: poster varsa onu göster, yoksa video bırak (kontroller görünür kalsın) */}
+      {err && poster ? (
+        <img
+          src={poster}
+          alt="Video fallback"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            pointerEvents: 'none',
+          }}
+        />
+      ) : null}
+
       <video
         ref={videoRef}
-        // Video ebeveyni tamamen doldurur:
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: 'auto',
-          height: 'auto',
-          maxWidth: '100%',
-          maxHeight: '100%',
-          objectFit: fit, // 'cover' veya 'contain'
-        }}
         poster={poster}
         muted={muted}
         autoPlay={autoPlay}
         playsInline={playsInline}
         loop={loop}
+        // Parent’ı doldur + fit davranışı
+        style={{
+          inset: 0,
+          maxWidth: '100%',
+          maxHeight: '100%',
+          width: 'auto',
+          height: 'auto',
+          objectFit: fit, // 'cover' veya 'contain'
+        }}
         {...videoProps}
       />
     </div>
