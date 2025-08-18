@@ -28,9 +28,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "hls.js": "^1.6.10",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "hls.js": "^1.6.10"
   },
   "devDependencies": {
     "@types/react": "^18",
