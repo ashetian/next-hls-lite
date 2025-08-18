@@ -11,6 +11,7 @@ npm install @ashetian/next-hls-lite
 ## Usage
 
 Component works by covering its parent so make sure you have a parent for video in your layout.
+
 ```tsx
 import { HlsVideo } from '@ashetian/next-hls-lite';
 
@@ -26,6 +27,34 @@ export default function MyPage() {
         loop
         fit="cover"
       />
+    </div>
+  );
+}
+```
+
+You can also pass children to the component to render overlays.
+
+```tsx
+import { HlsVideo } from '@ashetian/next-hls-lite';
+
+export default function MyPage() {
+  return (
+    <div className="flex items-center justify-center w-screen h-screen">
+      <HlsVideo
+        src="https://example.com/video.m3u8"
+        poster="https://example.com/poster.jpg"
+        autoPlay
+        playsInline
+        loop
+        overlayPointerEvents="none"
+        fit="cover"
+      >
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+          <h1 className="text-white text-3xl">
+            This is an overlay
+          </h1>
+        </div>
+      </HlsVideo>
     </div>
   );
 }

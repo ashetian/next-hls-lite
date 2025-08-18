@@ -1,5 +1,5 @@
 'use client';
-
+import React from 'react';
 import type { ErrorData } from 'hls.js';
 import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from 'react';
 
@@ -11,6 +11,9 @@ type HlsVideoProps = BaseVideoProps & {
   onLoadStart?: () => void;
   onCanPlay?: () => void;
   onError?: (err: unknown) => void;
+  overlayPointerEvents?: 'auto' | 'none';
+  overlayZIndex?: number;
+  children?: React.ReactNode;
 };
 
 function supportsNativeHls(video: HTMLVideoElement) {
@@ -19,15 +22,18 @@ function supportsNativeHls(video: HTMLVideoElement) {
 }
 
 export function HlsVideo({
+  children,
   src,
   fit = 'cover',
   onLoadStart,
   onCanPlay,
   onError,
   poster,
-  muted = true,
-  autoPlay = true,
-  playsInline = true,
+  muted,
+  autoPlay,
+  playsInline,
+  overlayPointerEvents = 'none', // default: tıklamayı engelleme
+  overlayZIndex = 2,             // video 0, loader 1, overlay 2
   loop,
   ...videoProps
 }: HlsVideoProps) {
@@ -187,25 +193,41 @@ export function HlsVideo({
           }}
         />
       ) : null}
-
-      <video
-        ref={videoRef}
-        poster={poster}
-        muted={muted}
-        autoPlay={autoPlay}
-        playsInline={playsInline}
-        loop={loop}
-        // Parent’ı doldur + fit davranışı
-        style={{
-          inset: 0,
-          maxWidth: '100%',
-          maxHeight: '100%',
-          width: 'auto',
-          height: 'auto',
-          objectFit: fit, // 'cover' veya 'contain'
-        }}
-        {...videoProps}
-      />
+      <div className='relative flex items-center justify-center'>
+        <video
+          ref={videoRef}
+          poster={poster}
+          muted={muted}
+          autoPlay={autoPlay}
+          playsInline={playsInline}
+          loop={loop}
+          // Parent’ı doldur + fit davranışı
+          style={{
+            inset: 0,
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            objectFit: fit, // 'cover' veya 'contain'
+          }}
+          {...videoProps}
+        />
+        {/* overlay: children */}
+        {children && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              maxWidth: '100%',
+              maxHeight: '100%',
+              zIndex: overlayZIndex,
+              pointerEvents: overlayPointerEvents, // 'none' -> alttaki controls tıklanır
+            }}
+          >
+            {children}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
