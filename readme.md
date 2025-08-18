@@ -5,7 +5,7 @@ A tiny, Next.js-friendly React component that plays HLS streams with graceful fa
 ![npm](https://img.shields.io/npm/v/@ashetian/next-hls-lite)
 ![npm downloads](https://img.shields.io/npm/dw/@ashetian/next-hls-lite)
 ![license](https://img.shields.io/npm/l/@ashetian/next-hls-lite)
-![bundle size](https://img.shields.io/bundlephobia/minzip/@ashetian/next-hls-lite)
+![bundle size](https://deno.bundlejs.com/badge?q=@ashetian/next-hls-lite@1.1.1)
 
 ---
 
